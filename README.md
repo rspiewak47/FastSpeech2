@@ -10,6 +10,7 @@ On the other hand, pitch spectrograms extracted by continuous wavelet transform 
 ![](./img/model.png)
 
 # Updates
+- 2021/8/20: Support for inference using text input file
 - 2021/7/8: Release the checkpoint and audio samples of a multi-speaker English TTS model trained on LibriTTS
 - 2021/2/26: Support English and Mandarin TTS
 - 2021/2/26: Support multi-speaker TTS (AISHELL-3 and LibriTTS)
@@ -57,6 +58,39 @@ Batch inference is also supported, try
 python3 synthesize.py --source preprocessed_data/LJSpeech/val.txt --restore_step 900000 --mode batch -p config/LJSpeech/preprocess.yaml -m config/LJSpeech/model.yaml -t config/LJSpeech/train.yaml
 ```
 to synthesize all utterances in ``preprocessed_data/LJSpeech/val.txt``
+
+## File Inference
+File mode processes all lines in a text file. A single output wav file will be put in "output/results/". The supported input file size depends on GPU memory. For a single GPU, a file of around 100 lines of text should be able to be processed.
+
+To support file mode, the following configuration item is added to the model.yaml file. The default value is "False". If mel output is desired,
+set this value to "True".
+# skip mel output - used for "file" mode
+output:
+  produce_mel: False
+
+  Similarly, to prevent excessive console output, the following configuration items are added to the preprocess.yaml file. The default values are "False". If this output is desired, set these values to "True".
+
+print:
+   print_text: False
+   print_phonemes: False
+
+The command format is:
+python3 synthesize.py --source preprocessed_data/textfile.txt --restore_step 900000 --mode file -p config/LJSpeech/preprocess.yaml -m config/LJSpeech/model.yaml -t config/LJSpeech/train.yaml
+
+# Debugging
+If debugging with VS Code, a sample launch.json configuration would look like:
+        {
+            "name": "Python: synthesize.py",
+            "type": "python",
+            "request": "launch",
+            "cwd": "E:\\fastspeech2",
+            "program": "synthesize.py",
+            "args":  ["--source=preprocessed_data/Chapter1.txt","--restore_step=90000","--mode=file",
+            "-p=config/LJSpeech/preprocess.yaml","-m=config/LJSpeech/model.yaml","-t=config/LJSpeech/train.yaml"],
+            "console": "integratedTerminal",
+            "justMyCode": false
+        },
+  Note the use of "=" signs in the argument list, as these are required in this case.
 
 ## Controllability
 The pitch/volume/speaking rate of the synthesized utterances can be controlled by specifying the desired pitch/energy/duration ratios.
