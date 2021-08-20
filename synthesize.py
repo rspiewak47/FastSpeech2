@@ -1,6 +1,8 @@
+import os
 import re
 import argparse
 from string import punctuation
+from typing import List
 
 import torch
 import yaml
@@ -30,6 +32,8 @@ def read_lexicon(lex_path):
 
 
 def preprocess_english(text, preprocess_config):
+    if isinstance(text,List):
+        text = "".join(text)
     text = text.rstrip(punctuation)
     lexicon = read_lexicon(preprocess_config["path"]["lexicon_path"])
 
@@ -45,8 +49,10 @@ def preprocess_english(text, preprocess_config):
     phones = re.sub(r"\{[^\w\s]?\}", "{sp}", phones)
     phones = phones.replace("}{", " ")
 
-    print("Raw Text Sequence: {}".format(text))
-    print("Phoneme Sequence: {}".format(phones))
+    if preprocess_config["print"]["print_text"]:
+        print("Raw Text Sequence: {}".format(text))
+    if preprocess_config["print"]["print_phonemes"]:
+        print("Phoneme Sequence: {}".format(phones))
     sequence = np.array(
         text_to_sequence(
             phones, preprocess_config["preprocessing"]["text"]["text_cleaners"]
@@ -115,15 +121,15 @@ if __name__ == "__main__":
     parser.add_argument(
         "--mode",
         type=str,
-        choices=["batch", "single"],
+        choices=["batch", "single", "file"],
         required=True,
-        help="Synthesize a whole dataset or a single sentence",
+        help="Synthesize a whole dataset, a single sentence, or the contents of a text file",
     )
     parser.add_argument(
         "--source",
         type=str,
         default=None,
-        help="path to a source file with format like train.txt and val.txt, for batch mode only",
+        help="path to a source file with format like train.txt and val.txt, for batch mode or a text file for file mode",
     )
     parser.add_argument(
         "--text",
@@ -207,6 +213,19 @@ if __name__ == "__main__":
         elif preprocess_config["preprocessing"]["text"]["language"] == "zh":
             texts = np.array([preprocess_mandarin(args.text, preprocess_config)])
         text_lens = np.array([len(texts[0])])
+        batchs = [(ids, raw_texts, speakers, texts, text_lens, max(text_lens))]
+    if args.mode == "file":
+        # ids = np.array([os.path.basename(args.source)])
+        f = open(args.source,'r')
+        ids = [(os.path.basename(args.source))]
+        raw_texts = [f.read()]
+        # ids = raw_texts
+        speakers = np.array([args.speaker_id])
+        if preprocess_config["preprocessing"]["text"]["language"] == "en":
+            texts = np.array([preprocess_english(raw_texts, preprocess_config)])
+        elif preprocess_config["preprocessing"]["text"]["language"] == "zh":
+            texts = np.array([preprocess_mandarin(raw_texts, preprocess_config)])
+        text_lens = np.array([len(raw_texts)])
         batchs = [(ids, raw_texts, speakers, texts, text_lens, max(text_lens))]
 
     control_values = args.pitch_control, args.energy_control, args.duration_control
